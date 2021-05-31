@@ -1,0 +1,230 @@
+import ctypes
+import threading
+import time
+from tkinter import *
+
+import cv2
+from PIL import Image
+from plyer import notification
+from pystray import *
+
+"""
+Global variables 
+"""
+limit = 0
+notification_count = 0
+system_tray_thread = None
+monitor_thread = None
+mutex = threading.Lock()
+
+start_camera = False
+stop_camera = False
+stop_monitor = False
+
+
+def exit_action(icon):
+    """
+    :param icon: Icon from PySTray
+    :return: --
+    Close the GUI menu in the System Tray
+    """
+    icon.visible = False
+    icon.stop()
+
+
+def setup(icon):
+    """
+    :param icon: Icon from PySTray
+    :return: --
+    Setup the GUI menu in the System Tray
+    """
+    icon.visible = True
+
+    i = 0
+    while icon.visible:
+        i += 1
+
+        time.sleep(5)
+
+
+def notification_watchdog():
+    """
+    Watchdog for sending user notifications every 300 ms
+    :return:
+    """
+    global notification_count
+    while True:
+        time.sleep(300)
+        mutex.acquire()
+        notification_count = 0
+        mutex.release()
+
+
+def init_icon():
+    """
+    :return: --
+    Initialise the GUI menu in the System Tray
+    """
+    icon = Icon('mon')
+    item = MenuItem("Start Monitor", monitor_thread_cb)
+    item1 = MenuItem("Start Camera", start_cam_button)
+    item2 = MenuItem("Exit", lambda: exit_action(icon))
+    item3 = MenuItem("Stop Camera", stop_cam_button)
+    menu = Menu(item, item1, item3, item2)
+
+    icon.menu = menu
+
+    icon.icon = Image.open('icons8-eye-16.png')
+    icon.title = 'User Monitor'
+
+    icon.run(setup)
+
+
+def sys_tray_icon():
+    """
+    Icon file imported from Icons8.com
+    run system tray app function
+    """
+    init_icon()
+
+
+def measure_distance():
+    """
+    Function that measures the distance between user and web camera
+    """
+    # initialise CV2 library and Video stream
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    cap = cv2.VideoCapture(0)
+    global notification_count
+
+    if cap is None or not cap.isOpened():
+        # if camera cannot be opened, error
+        ctypes.windll.user32.MessageBoxW(0, u"Could not access camera!", u"Error", 0)
+    while True:
+        # Read, convert to grayscale and calculate the distance to the detected face.
+        ret, img = cap.read()
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+        for (x, y, z, h) in faces:
+            cv2.rectangle(img, (x, y), (x + z, y + h), (0, 255, 0), 2)
+            roi = gray[x:x + z, y:y + h]
+            length = roi.shape[0]
+            breadth = roi.shape[1]
+            area = length * breadth
+            distance = 3 * (10 ** (-9)) * (area ** 2) - 0.001 * area + 108.6
+            display = 'Distance = ' + str(distance)
+            # if the distance is smaller than a certain number, send notification to user
+            # TODO: make distance a variable number(which the user can input in the GUI)
+            if distance < 60:
+                if notification_count <= 2:
+                    notification.notify(
+                        title='You are too close to the monitor!',
+                        message='Please stand further away from your monitor!',
+                        app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
+                        # TODO: Get an icon
+                        timeout=3,  # seconds
+                    )
+                    # notifications cannot be sent one after another.
+                    # they are sent in bursts of 2, a watchdog on a separate thread keeps track of them
+                    mutex.acquire()
+                    notification_count += 1
+                    mutex.release()
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            if area > 0:
+                cv2.putText(img, display, (5, 50), font, 2, (255, 255, 0), 2, cv2.LINE_AA)
+
+        if start_camera:
+            cv2.imshow("Camera", img)
+
+        if stop_camera:
+            cv2.destroyWindow("Camera")
+
+        key = cv2.waitKey(5) & 0xFF
+        if key == ord("v") or stop_monitor:
+            break
+
+    # release all Video streams and destroy Windows
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+def start_cam_button():
+    """
+    flags for starting the camera
+    """
+    global start_camera
+    global stop_camera
+    stop_camera = False
+    start_camera = True
+
+
+def stop_cam_button():
+    """
+    flags for stopping the camera
+    """
+    global start_camera
+    global stop_camera
+    start_camera = False
+    stop_camera = True
+
+
+def stop_monitor_button():
+    global stop_monitor
+    stop_monitor = True
+
+
+def monitor_thread_cb():
+    """
+    callback function for distance monitor thread
+    """
+    global monitor_thread
+    try:
+        # start the daemon for monitoring the camera
+        monitor_thread = threading.Thread(target=measure_distance, daemon=True)
+        monitor_thread.start()
+    except:
+        print("error creating thread")
+
+
+def tk_main_window():
+    """
+    main window GUI
+    """
+    mainWindow = Tk()
+    mainWindowTitle = Label(mainWindow, text="User Monitor GUI")
+    mainWindowTitle.pack()
+    # Buttons call appropriate callback functions
+    B = Button(mainWindow, text="start monitor", command=monitor_thread_cb)
+    C = Button(mainWindow, text="start camera", command=start_cam_button)
+    D = Button(mainWindow, text="stop camera", command=stop_cam_button)
+    B.pack()
+    C.pack()
+    D.pack()
+    # run window loop
+    mainWindow.mainloop()
+
+
+def main():
+    """
+    main function of the program
+    """
+    global system_tray_thread
+    try:
+        # create thread for the System Tray
+        system_tray_thread = threading.Thread(target=sys_tray_icon)
+        system_tray_thread.start()
+    except:
+        print("error")
+
+    try:
+        # create thread for the notification watchdog
+        notification_watchdog_thread = threading.Thread(target=notification_watchdog, daemon=True)
+        notification_watchdog_thread.start()
+    except:
+        print("error")
+
+    tk_main_window()
+
+
+if __name__ == "__main__":
+    main()
