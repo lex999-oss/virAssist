@@ -48,16 +48,24 @@ def setup(icon):
 
 
 def notification_watchdog():
-    """
-    Watchdog for sending user notifications every 300 ms
-    :return:
-    """
     global notification_count
     while True:
-        time.sleep(300)
-        mutex.acquire()
+        time.sleep(10)
         notification_count = 0
-        mutex.release()
+
+
+def notify():
+    global notification_count
+    notification_count += 1
+    notification.notify(
+        title='You are too close to the monitor!',
+        message='Please stand further away from your monitor!',
+        app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
+        # TODO: Get an icon
+        timeout=1,  # seconds
+    )
+    # notifications cannot be sent one after another.
+    # they are sent in bursts of 2, a watchdog on a separate thread keeps track of them
 
 
 def init_icon():
@@ -115,20 +123,9 @@ def measure_distance():
             display = 'Distance = ' + str(distance)
             # if the distance is smaller than a certain number, send notification to user
             # TODO: make distance a variable number(which the user can input in the GUI)
-            if distance < 60:
-                if notification_count <= 2:
-                    notification.notify(
-                        title='You are too close to the monitor!',
-                        message='Please stand further away from your monitor!',
-                        app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
-                        # TODO: Get an icon
-                        timeout=3,  # seconds
-                    )
-                    # notifications cannot be sent one after another.
-                    # they are sent in bursts of 2, a watchdog on a separate thread keeps track of them
-                    mutex.acquire()
-                    notification_count += 1
-                    mutex.release()
+            if distance < limit:
+                if notification_count < 1:
+                    notify()
             font = cv2.FONT_HERSHEY_SIMPLEX
             if area > 0:
                 cv2.putText(img, display, (5, 50), font, 2, (255, 255, 0), 2, cv2.LINE_AA)
@@ -186,10 +183,21 @@ def monitor_thread_cb():
         print("error creating thread")
 
 
+def enter_limit(limit_string, label_string):
+    global limit
+    local = limit_string.get()
+    if local <= 25 or local >= 60:
+        ctypes.windll.user32.MessageBoxW(0, u"For safety reasons, you cannot set the distance lower than 25 cm or higher than 60 cm", u"Error", 0)
+    else:
+        limit = local
+    label_string.set("Distance:" + str(limit))
+
+
 def tk_main_window():
     """
     main window GUI
     """
+    global limit
     mainWindow = Tk()
     mainWindowTitle = Label(mainWindow, text="User Monitor GUI")
     mainWindowTitle.pack()
@@ -197,9 +205,21 @@ def tk_main_window():
     B = Button(mainWindow, text="start monitor", command=monitor_thread_cb)
     C = Button(mainWindow, text="start camera", command=start_cam_button)
     D = Button(mainWindow, text="stop camera", command=stop_cam_button)
+    limit_string = IntVar()
+    distance_string = StringVar()
+    distance_string.set("Distance:" + str(limit))
+    E_b = Button(mainWindow, text="Submit", command=lambda: enter_limit(limit_string, distance_string))
+    # Text box for distance input
+    limitEntered = Entry(mainWindow, width=15, textvariable=limit_string)
     B.pack()
     C.pack()
     D.pack()
+    label = Label(mainWindow, text="Enter minimum limit for distance:")
+    label.pack()
+    limitEntered.pack()
+    E_b.pack()
+    label1 = Label(mainWindow, textvariable=distance_string)
+    label1.pack()
     # run window loop
     mainWindow.mainloop()
 
@@ -208,17 +228,16 @@ def main():
     """
     main function of the program
     """
-    global system_tray_thread
+    global system_tray_thread, notification_count
     try:
         # create thread for the System Tray
         system_tray_thread = threading.Thread(target=sys_tray_icon)
         system_tray_thread.start()
     except:
         print("error")
-
     try:
         # create thread for the notification watchdog
-        notification_watchdog_thread = threading.Thread(target=notification_watchdog, daemon=True)
+        notification_watchdog_thread = threading.Thread(target=notification_watchdog)
         notification_watchdog_thread.start()
     except:
         print("error")
