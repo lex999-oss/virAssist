@@ -11,15 +11,16 @@ from pystray import *
 """
 Global variables 
 """
-limit = 0
+limit = 60
 notification_count = 0
 system_tray_thread = None
+notification_watchdog_thread = None
 monitor_thread = None
 mutex = threading.Lock()
 
 start_camera = False
 stop_camera = False
-stop_monitor = False
+stop_monitor = True
 
 
 def exit_action(icon):
@@ -28,6 +29,9 @@ def exit_action(icon):
     :return: --
     Close the GUI menu in the System Tray
     """
+    global stop_monitor
+    if not stop_monitor:
+        stop_monitor = True
     icon.visible = False
     icon.stop()
 
@@ -48,10 +52,12 @@ def setup(icon):
 
 
 def notification_watchdog():
-    global notification_count
+    global notification_count, stop_monitor
     while True:
         time.sleep(10)
         notification_count = 0
+        if stop_monitor:
+            break
 
 
 def notify():
@@ -78,11 +84,12 @@ def init_icon():
     item1 = MenuItem("Start Camera", start_cam_button)
     item2 = MenuItem("Exit", lambda: exit_action(icon))
     item3 = MenuItem("Stop Camera", stop_cam_button)
-    menu = Menu(item, item1, item3, item2)
+    item4 = MenuItem("Stop Monitor", stop_monitor_button)
+    menu = Menu(item, item1, item3, item4, item2)
 
     icon.menu = menu
 
-    icon.icon = Image.open('icons8-eye-16.png')
+    icon.icon = Image.open('icons8-eye-40.png')
     icon.title = 'User Monitor'
 
     icon.run(setup)
@@ -101,9 +108,10 @@ def measure_distance():
     Function that measures the distance between user and web camera
     """
     # initialise CV2 library and Video stream
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    face_cascade = cv2.CascadeClassifier('./haar-cascade-files-master/haarcascade_frontalface_default.xml')
     cap = cv2.VideoCapture(0)
-    global notification_count
+    global notification_count, stop_monitor
+    stop_monitor = False
 
     if cap is None or not cap.isOpened():
         # if camera cannot be opened, error
@@ -122,7 +130,6 @@ def measure_distance():
             distance = 3 * (10 ** (-9)) * (area ** 2) - 0.001 * area + 108.6
             display = 'Distance = ' + str(distance)
             # if the distance is smaller than a certain number, send notification to user
-            # TODO: make distance a variable number(which the user can input in the GUI)
             if distance < limit:
                 if notification_count < 1:
                     notify()
@@ -177,7 +184,7 @@ def monitor_thread_cb():
     global monitor_thread
     try:
         # start the daemon for monitoring the camera
-        monitor_thread = threading.Thread(target=measure_distance, daemon=True)
+        monitor_thread = threading.Thread(target=measure_distance)
         monitor_thread.start()
     except:
         print("error creating thread")
@@ -197,7 +204,7 @@ def tk_main_window():
     """
     main window GUI
     """
-    global limit
+    global limit, stop_monitor
     mainWindow = Tk()
     mainWindowTitle = Label(mainWindow, text="User Monitor GUI")
     mainWindowTitle.pack()
@@ -205,6 +212,7 @@ def tk_main_window():
     B = Button(mainWindow, text="start monitor", command=monitor_thread_cb)
     C = Button(mainWindow, text="start camera", command=start_cam_button)
     D = Button(mainWindow, text="stop camera", command=stop_cam_button)
+    F = Button(mainWindow, text="stop monitor", command=stop_monitor_button)
     limit_string = IntVar()
     distance_string = StringVar()
     distance_string.set("Distance:" + str(limit))
@@ -214,6 +222,7 @@ def tk_main_window():
     B.pack()
     C.pack()
     D.pack()
+    F.pack()
     label = Label(mainWindow, text="Enter minimum limit for distance:")
     label.pack()
     limitEntered.pack()
@@ -222,19 +231,23 @@ def tk_main_window():
     label1.pack()
     # run window loop
     mainWindow.mainloop()
+    if not stop_monitor:
+        stop_monitor = True
+    mainWindow.quit()
 
 
 def main():
     """
     main function of the program
     """
-    global system_tray_thread, notification_count
+    global system_tray_thread, notification_count, notification_watchdog_thread
     try:
         # create thread for the System Tray
         system_tray_thread = threading.Thread(target=sys_tray_icon)
         system_tray_thread.start()
     except:
         print("error")
+
     try:
         # create thread for the notification watchdog
         notification_watchdog_thread = threading.Thread(target=notification_watchdog)
