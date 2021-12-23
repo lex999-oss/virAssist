@@ -1,0 +1,10 @@
+threading
+time
+tkinter
+cv2
+PIL
+plyer
+pystray
+os
+ctypes
+yaml
