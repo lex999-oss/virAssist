@@ -38,8 +38,8 @@ jobs:
         include:
           - os: windows-latest
             TARGET: windows
-            CMD_BUILD: pyinstaller -F -w -n PyAssistant main.spec
-            OUT_FILE_NAME: clipster.exe
+            CMD_BUILD: pyinstaller --onefile -w -n PyAssistant main.spec
+            OUT_FILE_NAME: main.exe
             ASSET_MIME: application/vnd.microsoft.portable-executable
     steps:
     - uses: actions/checkout@v1
