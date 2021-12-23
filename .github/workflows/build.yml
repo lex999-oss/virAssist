@@ -85,6 +85,7 @@ jobs:
         upload_url: ${{ steps.get_release_info.outputs.upload_url }}
         asset_path: ./haarcascade_frontalface_default.xml
         asset_name: haarcascade_frontalface_default.xml
+        asset_content_type: application/xml
     - name: Upload Config File
       id: upload-config-file
       uses: actions/upload-release-asset@v1
@@ -94,6 +95,7 @@ jobs:
         upload_url: ${{ steps.get_release_info.outputs.upload_url }}
         asset_path: ./conf.yaml
         asset_name: conf.yaml
+        asset_content_type: text/yaml
     - name: Upload icon File
       id: upload-icon-file
       uses: actions/upload-release-asset@v1
@@ -103,3 +105,4 @@ jobs:
         upload_url: ${{ steps.get_release_info.outputs.upload_url }}
         asset_path: ./icons8-eye-40.png
         asset_name: icons8-eye-40.png
+        asset_content_type: image/png
