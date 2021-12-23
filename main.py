@@ -1,26 +1,50 @@
-import ctypes
-import threading
-import time
-from tkinter import *
-
-import cv2
+from threading import Thread, ThreadError
+from time import time, sleep
+from tkinter import Tk, Label, Button
+from cv2 import CascadeClassifier, VideoCapture, cvtColor, COLOR_BGR2GRAY, rectangle, FONT_HERSHEY_SIMPLEX, putText, \
+                imshow, destroyWindow, waitKey, LINE_AA, destroyAllWindows
 from PIL import Image
 from plyer import notification
-from pystray import *
+from pystray import Icon, MenuItem, Menu
+from os import startfile
+from ctypes import Structure, windll, c_uint, sizeof, byref
+from yaml import load, FullLoader
+
+
+class LASTINPUTINFO(Structure):
+    _fields_ = [
+        ('cbSize', c_uint),
+        ('dwTime', c_uint),
+    ]
+
+
+def get_idle_duration():
+    lastInputInfo = LASTINPUTINFO()
+    lastInputInfo.cbSize = sizeof(lastInputInfo)
+    windll.user32.GetLastInputInfo(byref(lastInputInfo))
+    millis = windll.kernel32.GetTickCount() - lastInputInfo.dwTime
+    return millis / 1000.0
+
 
 """
 Global variables 
 """
-limit = 60
+distance_limit = 60  # centimeters
 notification_count = 0
-system_tray_thread = None
-notification_watchdog_thread = None
-monitor_thread = None
-mutex = threading.Lock()
+idle_time = 0
+active_time = 0
+idle_time_limit = 300  # seconds
+active_time_limit = 3600  # seconds
+system_tray_thread = Thread
+notification_watchdog_thread = Thread
+active_time_measure_thread = Thread
+monitor_thread = Thread
+stop = 0
 
 start_camera = False
 stop_camera = False
 stop_monitor = True
+monitor_thread_started = False
 
 
 def exit_action(icon):
@@ -40,7 +64,7 @@ def setup(icon):
     """
     :param icon: Icon from PySTray
     :return: --
-    Setup the GUI menu in the System Tray
+    Set up the GUI menu in the System Tray
     """
     icon.visible = True
 
@@ -48,28 +72,46 @@ def setup(icon):
     while icon.visible:
         i += 1
 
-        time.sleep(5)
+        sleep(5)
 
 
 def notification_watchdog():
     global notification_count, stop_monitor
     while True:
-        time.sleep(10)
+        sleep(10)
         notification_count = 0
         if stop_monitor:
             break
 
 
-def notify():
+def notify(notif_type):
     global notification_count
-    notification_count += 1
-    notification.notify(
-        title='You are too close to the monitor!',
-        message='Please stand further away from your monitor!',
-        app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
-        # TODO: Get an icon
-        timeout=1,  # seconds
-    )
+    if notif_type == 0:
+        notification.notify(
+            title='You are too close to the monitor!',
+            message='Please stand further away from your monitor!',
+            app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
+            # TODO: Get an icon
+            timeout=1,  # seconds
+        )
+        notification_count += 1
+    elif notif_type == 1:
+        notification.notify(
+            title='You should take a break!',
+            message='Please take some time away from the computer!',
+            app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
+            # TODO: Get an icon
+            timeout=1,  # seconds
+        )
+    elif notif_type == 2:
+        notification.notify(
+            title='Break is over!',
+            message='You can resume work!',
+            app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
+            # TODO: Get an icon
+            timeout=1,  # seconds
+        )
+
     # notifications cannot be sent one after another.
     # they are sent in bursts of 2, a watchdog on a separate thread keeps track of them
 
@@ -108,21 +150,21 @@ def measure_distance():
     Function that measures the distance between user and web camera
     """
     # initialise CV2 library and Video stream
-    face_cascade = cv2.CascadeClassifier('./haar-cascade-files-master/haarcascade_frontalface_default.xml')
-    cap = cv2.VideoCapture(0)
+    face_cascade = CascadeClassifier('./haarcascade_frontalface_default.xml')
+    cap = VideoCapture(0)
     global notification_count, stop_monitor
     stop_monitor = False
 
     if cap is None or not cap.isOpened():
         # if camera cannot be opened, error
-        ctypes.windll.user32.MessageBoxW(0, u"Could not access camera!", u"Error", 0)
+        windll.user32.MessageBoxW(0, u"Could not access camera!", u"Error", 0)
     while True:
         # Read, convert to grayscale and calculate the distance to the detected face.
         ret, img = cap.read()
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = cvtColor(img, COLOR_BGR2GRAY)
         faces = face_cascade.detectMultiScale(gray, 1.3, 5)
         for (x, y, z, h) in faces:
-            cv2.rectangle(img, (x, y), (x + z, y + h), (0, 255, 0), 2)
+            rectangle(img, (x, y), (x + z, y + h), (0, 255, 0), 2)
             roi = gray[x:x + z, y:y + h]
             length = roi.shape[0]
             breadth = roi.shape[1]
@@ -130,26 +172,27 @@ def measure_distance():
             distance = 3 * (10 ** (-9)) * (area ** 2) - 0.001 * area + 108.6
             display = 'Distance = ' + str(distance)
             # if the distance is smaller than a certain number, send notification to user
-            if distance < limit:
+            if distance < distance_limit:
                 if notification_count < 1:
-                    notify()
-            font = cv2.FONT_HERSHEY_SIMPLEX
+                    notify(0)
+            font = FONT_HERSHEY_SIMPLEX
             if area > 0:
-                cv2.putText(img, display, (5, 50), font, 2, (255, 255, 0), 2, cv2.LINE_AA)
+                putText(img, display, (5, 50), font, 2, (255, 255, 0), 2, LINE_AA)
 
         if start_camera:
-            cv2.imshow("Camera", img)
+            imshow("Camera", img)
 
         if stop_camera:
-            cv2.destroyWindow("Camera")
+            destroyWindow("Camera")
 
-        key = cv2.waitKey(5) & 0xFF
+        key = waitKey(5) & 0xFF
         if key == ord("v") or stop_monitor:
+            stop_monitor = False
             break
 
     # release all Video streams and destroy Windows
     cap.release()
-    cv2.destroyAllWindows()
+    destroyAllWindows()
 
 
 def start_cam_button():
@@ -173,38 +216,38 @@ def stop_cam_button():
 
 
 def stop_monitor_button():
-    global stop_monitor
+    global stop_monitor, monitor_thread_started
     stop_monitor = True
+    if monitor_thread_started:
+        monitor_thread.join()
+        monitor_thread_started = False
 
 
 def monitor_thread_cb():
     """
     callback function for distance monitor thread
     """
-    global monitor_thread
-    try:
-        # start the daemon for monitoring the camera
-        monitor_thread = threading.Thread(target=measure_distance)
-        monitor_thread.start()
-    except:
-        print("error creating thread")
+    global monitor_thread, monitor_thread_started, stop_monitor
+    if not monitor_thread_started:
+        try:
+            # start the daemon for monitoring the camera
+            monitor_thread = Thread(target=measure_distance)
+            monitor_thread.start()
+            monitor_thread_started = True
+        except ThreadError:
+            print("error creating thread")
 
 
-def enter_limit(limit_string, label_string):
-    global limit
-    local = limit_string.get()
-    if local <= 25 or local >= 60:
-        ctypes.windll.user32.MessageBoxW(0, u"For safety reasons, you cannot set the distance lower than 25 cm or higher than 60 cm", u"Error", 0)
-    else:
-        limit = local
-    label_string.set("Distance:" + str(limit))
+def edit_conf_file():
+    startfile(".\\conf.yaml")
+    load_config()
 
 
 def tk_main_window():
     """
     main window GUI
     """
-    global limit, stop_monitor
+    global distance_limit, stop_monitor
     mainWindow = Tk()
     mainWindowTitle = Label(mainWindow, text="User Monitor GUI")
     mainWindowTitle.pack()
@@ -213,22 +256,12 @@ def tk_main_window():
     C = Button(mainWindow, text="start camera", command=start_cam_button)
     D = Button(mainWindow, text="stop camera", command=stop_cam_button)
     F = Button(mainWindow, text="stop monitor", command=stop_monitor_button)
-    limit_string = IntVar()
-    distance_string = StringVar()
-    distance_string.set("Distance:" + str(limit))
-    E_b = Button(mainWindow, text="Submit", command=lambda: enter_limit(limit_string, distance_string))
-    # Text box for distance input
-    limitEntered = Entry(mainWindow, width=15, textvariable=limit_string)
+    E = Button(mainWindow, text="edit config", command=edit_conf_file)
     B.pack()
     C.pack()
     D.pack()
     F.pack()
-    label = Label(mainWindow, text="Enter minimum limit for distance:")
-    label.pack()
-    limitEntered.pack()
-    E_b.pack()
-    label1 = Label(mainWindow, textvariable=distance_string)
-    label1.pack()
+    E.pack()
     # run window loop
     mainWindow.mainloop()
     if not stop_monitor:
@@ -236,27 +269,76 @@ def tk_main_window():
     mainWindow.quit()
 
 
+def active_time_measure():
+    global active_time, idle_time, active_time_limit
+    if int(time() - active_time) >= active_time_limit:
+        notify(1)
+        idle_time_measure_wd()
+
+
+def active_time_measure_wd():
+    global active_time, stop
+    active_time = time()
+    while True:
+        sleep(10)
+        active_time_measure()
+        if stop:
+            break
+
+
+def idle_time_measure_wd():
+    global idle_time, active_time, idle_time_limit
+    while True:
+        sleep(10)
+        idle_time = get_idle_duration()
+        if idle_time >= idle_time_limit:
+            notify(2)
+            active_time = 0
+            break
+
+
 def main():
     """
     main function of the program
     """
-    global system_tray_thread, notification_count, notification_watchdog_thread
+    global system_tray_thread, notification_count, notification_watchdog_thread, active_time_measure_thread, stop
     try:
         # create thread for the System Tray
-        system_tray_thread = threading.Thread(target=sys_tray_icon)
+        system_tray_thread = Thread(target=sys_tray_icon)
         system_tray_thread.start()
-    except:
+    except ThreadError:
         print("error")
 
     try:
         # create thread for the notification watchdog
-        notification_watchdog_thread = threading.Thread(target=notification_watchdog)
+        notification_watchdog_thread = Thread(target=notification_watchdog)
         notification_watchdog_thread.start()
-    except:
+    except ThreadError:
+        print("error")
+
+    try:
+        # create thread for the notification watchdog
+        active_time_measure_thread = Thread(target=active_time_measure_wd)
+        active_time_measure_thread.start()
+    except ThreadError:
         print("error")
 
     tk_main_window()
+    system_tray_thread.join()
+    notification_watchdog_thread.join()
+    stop = 1
+    active_time_measure_thread.join()
+
+
+def load_config():
+    global distance_limit, idle_time_limit, active_time_limit
+    with open("conf.yaml", "r") as yamlfile:
+        data = load(yamlfile, Loader=FullLoader)
+    distance_limit = data['distance_limit']
+    idle_time_limit = data['idle_time_limit']
+    active_time_limit = data['active_time_limit']
 
 
 if __name__ == "__main__":
+    load_config()
     main()
