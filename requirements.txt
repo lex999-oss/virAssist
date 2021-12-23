@@ -1,4 +1,0 @@
-pyinstaller
-pyaml
-opencv-python
-pystray
