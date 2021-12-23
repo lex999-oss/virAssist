@@ -1,0 +1,18 @@
+#               Configuration file for Python Assistant
+#################################################################################
+#   distance_limit:                                                             #
+#           - the maximum distance from the user's eyes(face) to the monitor    #
+#           - default is 60 cm                                                  #
+#                                                                               #
+#   idle_time_limit:                                                            #
+#           - the value of time for breaks                                      #
+#           - default is 300 seconds(5 min)                                     #
+#                                                                               #
+#   active_time_limit:                                                          #
+#           - the value of time for productive time                             #
+#           - default is 3600 seconds(1 hour)                                   #
+#################################################################################
+
+distance_limit: 50      # centimeters
+idle_time_limit: 300    # seconds
+active_time_limit: 3600 # seconds 
