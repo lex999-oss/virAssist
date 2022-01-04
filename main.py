@@ -1,4 +1,4 @@
-from threading import Thread, ThreadError
+from threading import Thread, ThreadError, Lock
 from time import time, sleep
 from tkinter import Tk, Label, Button
 from cv2 import CascadeClassifier, VideoCapture, cvtColor, COLOR_BGR2GRAY, rectangle, FONT_HERSHEY_SIMPLEX, putText, \
@@ -40,6 +40,7 @@ notification_watchdog_thread = Thread
 active_time_measure_thread = Thread
 monitor_thread = Thread
 stop = 0
+active_time_mutex = Lock()
 
 start_camera = False
 stop_camera = False
@@ -249,6 +250,8 @@ def tk_main_window():
     """
     global distance_limit, stop_monitor
     mainWindow = Tk()
+    mainWindow.title('Python Assistant')
+    mainWindow.geometry('260x160')
     mainWindowTitle = Label(mainWindow, text="User Monitor GUI")
     mainWindowTitle.pack()
     # Buttons call appropriate callback functions
@@ -279,6 +282,7 @@ def active_time_measure():
 def active_time_measure_wd():
     global active_time, stop
     active_time = time()
+
     while True:
         sleep(10)
         active_time_measure()
@@ -293,8 +297,8 @@ def idle_time_measure_wd():
         idle_time = get_idle_duration()
         if idle_time >= idle_time_limit:
             notify(2)
-            active_time = 0
             break
+    active_time = time()
 
 
 def main():
