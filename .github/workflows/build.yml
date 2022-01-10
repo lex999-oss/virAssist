@@ -53,7 +53,7 @@ jobs:
         pip install pyaml
         pip install opencv-python
         pip install pystray
-        pip install plyer
+        pip install notify-py
     - name: Build with pyinstaller for ${{matrix.TARGET}}
       run: ${{matrix.CMD_BUILD}}
     - name: Load Release URL File from release job
