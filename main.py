@@ -4,7 +4,7 @@ from tkinter import Tk, Label, Button
 from cv2 import CascadeClassifier, VideoCapture, cvtColor, COLOR_BGR2GRAY, rectangle, FONT_HERSHEY_SIMPLEX, putText, \
                 imshow, destroyWindow, waitKey, LINE_AA, destroyAllWindows
 from PIL import Image
-from plyer import notification
+from notifypy import Notify
 from pystray import Icon, MenuItem, Menu
 from os import startfile
 from ctypes import Structure, windll, c_uint, sizeof, byref
@@ -87,31 +87,18 @@ def notification_watchdog():
 
 def notify(notif_type):
     global notification_count
+    notification = Notify()
     if notif_type == 0:
-        notification.notify(
-            title='You are too close to the monitor!',
-            message='Please stand further away from your monitor!',
-            app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
-            # TODO: Get an icon
-            timeout=1,  # seconds
-        )
+        notification.title = 'You are too close to the monitor!'
+        notification.message = 'Please stand further away from your monitor!'
         notification_count += 1
     elif notif_type == 1:
-        notification.notify(
-            title='You should take a break!',
-            message='Please take some time away from the computer!',
-            app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
-            # TODO: Get an icon
-            timeout=1,  # seconds
-        )
+        notification.title = 'You should take a break!'
+        notification.message = 'Please take some time away from the computer!'
     elif notif_type == 2:
-        notification.notify(
-            title='Break is over!',
-            message='You can resume work!',
-            app_icon=None,  # e.g. 'C:\\icon_32x32.ico'
-            # TODO: Get an icon
-            timeout=1,  # seconds
-        )
+        notification.title = 'Break is over!'
+        notification.message = 'You can resume work!'
+    notification.send()
 
     # notifications cannot be sent one after another.
     # they are sent in bursts of 2, a watchdog on a separate thread keeps track of them
