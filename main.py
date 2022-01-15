@@ -118,7 +118,7 @@ def init_icon():
 
     icon.menu = menu
 
-    icon.icon = Image.open('icons8-eye-40.png')
+    icon.icon = Image.open('.\\icons8-eye-40.png')
     icon.title = 'User Monitor'
 
     icon.run(setup)
