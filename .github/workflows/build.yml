@@ -37,7 +37,7 @@ jobs:
         include:
           - os: windows-latest
             TARGET: windows
-            CMD_BUILD: pyinstaller --onefile -w -n virAssist main.spec
+            CMD_BUILD: pyinstaller --onefile -n virAssist main.spec
             OUT_FILE_NAME: main.exe
             ASSET_MIME: application/vnd.microsoft.portable-executable
     steps:
