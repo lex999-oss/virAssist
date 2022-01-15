@@ -107,7 +107,7 @@ jobs:
         asset_name: icons8-eye-40.png
         asset_content_type: image/png
     - name: Upload icon File 2
-      id: upload-icon-file
+      id: upload-ico-file
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
