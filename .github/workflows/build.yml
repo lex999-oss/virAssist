@@ -103,6 +103,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.get_release_info.outputs.upload_url }}
-        asset_path: ./icons8-eye-40.png
-        asset_name: icons8-eye-40.png
-        asset_content_type: image/png
+        asset_path: ./favicon.ico
+        asset_name: favicon.ico
+        asset_content_type: image/vnd.microsoft.icon

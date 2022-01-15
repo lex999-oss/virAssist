@@ -61,21 +61,6 @@ def exit_action(icon):
     icon.stop()
 
 
-def setup(icon):
-    """
-    :param icon: Icon from PySTray
-    :return: --
-    Set up the GUI menu in the System Tray
-    """
-    icon.visible = True
-
-    i = 0
-    while icon.visible:
-        i += 1
-
-        sleep(5)
-
-
 def notification_watchdog():
     # reset notification every 10 seconds -> prevents notification flood
     global notification_count, stop_monitor
@@ -89,7 +74,7 @@ def notification_watchdog():
 def notify(notif_type):
     global notification_count
     notification = Notify(default_notification_application_name="virAssist",
-                          default_notification_icon=".\\icons8-eye-40.png")
+                          default_notification_icon=".\\favicon.ico")
     if notif_type == 0:
         notification.title = 'You are too close to the monitor!'
         notification.message = 'Please stand further away from your monitor!'
@@ -121,7 +106,7 @@ def init_icon():
     icon.icon = Image.open('.\\favicon.ico')
     icon.title = 'User Monitor'
 
-    icon.run(setup)
+    icon.run()
 
 
 def sys_tray_icon():
