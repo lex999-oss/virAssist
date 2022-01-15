@@ -77,6 +77,7 @@ def setup(icon):
 
 
 def notification_watchdog():
+    # reset notification every 10 seconds -> prevents notification flood
     global notification_count, stop_monitor
     while True:
         sleep(10)
