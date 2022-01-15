@@ -39,7 +39,7 @@ system_tray_thread = Thread
 notification_watchdog_thread = Thread
 active_time_measure_thread = Thread
 monitor_thread = Thread
-stop = 0
+stop_time_monitor = 0
 active_time_mutex = Lock()
 
 start_camera = False
@@ -87,7 +87,8 @@ def notification_watchdog():
 
 def notify(notif_type):
     global notification_count
-    notification = Notify()
+    notification = Notify(default_notification_application_name="virAssist",
+                          default_notification_icon=".\\icons8-eye-40.png")
     if notif_type == 0:
         notification.title = 'You are too close to the monitor!'
         notification.message = 'Please stand further away from your monitor!'
@@ -98,10 +99,7 @@ def notify(notif_type):
     elif notif_type == 2:
         notification.title = 'Break is over!'
         notification.message = 'You can resume work!'
-    notification.send()
-
-    # notifications cannot be sent one after another.
-    # they are sent in bursts of 2, a watchdog on a separate thread keeps track of them
+    notification.send(block=False)
 
 
 def init_icon():
@@ -143,9 +141,12 @@ def measure_distance():
     global notification_count, stop_monitor
     stop_monitor = False
 
-    if cap is None or not cap.isOpened():
+    if not cap.read()[0]:
         # if camera cannot be opened, error
         windll.user32.MessageBoxW(0, u"Could not access camera!", u"Error", 0)
+        stop_monitor = True
+        return
+
     while True:
         # Read, convert to grayscale and calculate the distance to the detected face.
         ret, img = cap.read()
@@ -177,7 +178,6 @@ def measure_distance():
         if key == ord("v") or stop_monitor:
             stop_monitor = False
             break
-
     # release all Video streams and destroy Windows
     cap.release()
     destroyAllWindows()
@@ -224,6 +224,7 @@ def monitor_thread_cb():
             monitor_thread_started = True
         except ThreadError:
             print("error creating thread")
+            monitor_thread_started = False
 
 
 def edit_conf_file():
@@ -237,8 +238,9 @@ def tk_main_window():
     """
     global distance_limit, stop_monitor
     mainWindow = Tk()
-    mainWindow.title('Python Assistant')
-    mainWindow.geometry('260x160')
+    mainWindow.title('virAssist')
+    mainWindow.geometry('260x180')
+    mainWindow.iconbitmap(".\\favicon.ico")
     mainWindowTitle = Label(mainWindow, text="User Monitor GUI")
     mainWindowTitle.pack()
     # Buttons call appropriate callback functions
@@ -247,15 +249,15 @@ def tk_main_window():
     D = Button(mainWindow, text="stop camera", command=stop_cam_button)
     F = Button(mainWindow, text="stop monitor", command=stop_monitor_button)
     E = Button(mainWindow, text="edit config", command=edit_conf_file)
+    edit_config_notice = Label(relief="sunken", text="Note: Restart app after editing config file.")
     B.pack()
     C.pack()
     D.pack()
     F.pack()
     E.pack()
+    edit_config_notice.pack()
     # run window loop
     mainWindow.mainloop()
-    if not stop_monitor:
-        stop_monitor = True
     mainWindow.quit()
 
 
@@ -267,19 +269,21 @@ def active_time_measure():
 
 
 def active_time_measure_wd():
-    global active_time, stop
+    global active_time, stop_time_monitor
     active_time = time()
 
     while True:
+        if stop_time_monitor:
+            break
         sleep(10)
         active_time_measure()
-        if stop:
-            break
 
 
 def idle_time_measure_wd():
     global idle_time, active_time, idle_time_limit
     while True:
+        if stop_time_monitor:
+            break
         sleep(10)
         idle_time = get_idle_duration()
         if idle_time >= idle_time_limit:
@@ -292,7 +296,7 @@ def main():
     """
     main function of the program
     """
-    global system_tray_thread, notification_count, notification_watchdog_thread, active_time_measure_thread, stop
+    global system_tray_thread, notification_count, notification_watchdog_thread, active_time_measure_thread, stop_time_monitor
     try:
         # create thread for the System Tray
         system_tray_thread = Thread(target=sys_tray_icon)
@@ -315,9 +319,9 @@ def main():
         print("error")
 
     tk_main_window()
+    stop_time_monitor = 1
     system_tray_thread.join()
     notification_watchdog_thread.join()
-    stop = 1
     active_time_measure_thread.join()
 
 
