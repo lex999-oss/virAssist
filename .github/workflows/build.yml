@@ -38,7 +38,7 @@ jobs:
           - os: windows-latest
             TARGET: windows
             CMD_BUILD: pyinstaller --onefile main.py
-            OUT_FILE_NAME: virAssist.exe
+            OUT_FILE_NAME: main.exe
             ASSET_MIME: application/vnd.microsoft.portable-executable
     steps:
     - uses: actions/checkout@v1
