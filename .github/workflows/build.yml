@@ -37,7 +37,7 @@ jobs:
         include:
           - os: windows-latest
             TARGET: windows
-            CMD_BUILD: pyinstaller --onefile -w -n PyAssistant main.spec
+            CMD_BUILD: pyinstaller --onefile -w -n virAssist main.spec
             OUT_FILE_NAME: main.exe
             ASSET_MIME: application/vnd.microsoft.portable-executable
     steps:
@@ -106,3 +106,13 @@ jobs:
         asset_path: ./icons8-eye-40.png
         asset_name: icons8-eye-40.png
         asset_content_type: image/png
+    - name: Upload icon File 2
+      id: upload-icon-file
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.get_release_info.outputs.upload_url }}
+        asset_path: ./favicon.ico
+        asset_name: favicon.ico
+        asset_content_type: image/vnd.microsoft.icon
