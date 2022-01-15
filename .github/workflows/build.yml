@@ -37,8 +37,8 @@ jobs:
         include:
           - os: windows-latest
             TARGET: windows
-            CMD_BUILD: pyinstaller --onefile main.spec
-            OUT_FILE_NAME: main.exe
+            CMD_BUILD: pyinstaller --onefile main.py
+            OUT_FILE_NAME: virAssist.exe
             ASSET_MIME: application/vnd.microsoft.portable-executable
     steps:
     - uses: actions/checkout@v1
@@ -52,7 +52,7 @@ jobs:
         pip install pyinstaller
         pip install pyaml
         pip install opencv-python
-        pip install pystray
+        pip install pystray==0.17.2
         pip install notify-py
     - name: Build with pyinstaller for ${{matrix.TARGET}}
       run: ${{matrix.CMD_BUILD}}
