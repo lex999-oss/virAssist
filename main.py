@@ -104,7 +104,7 @@ def init_icon():
     icon.menu = menu
 
     icon.icon = Image.open('.\\favicon.ico')
-    icon.title = 'User Monitor'
+    icon.title = 'virAssist'
 
     icon.run()
 
@@ -227,7 +227,7 @@ def tk_main_window():
     mainWindow.title('virAssist')
     mainWindow.geometry('260x180')
     mainWindow.iconbitmap(".\\favicon.ico")
-    mainWindowTitle = Label(mainWindow, text="User Monitor GUI")
+    mainWindowTitle = Label(mainWindow, text="virAssist GUI Menu")
     mainWindowTitle.pack()
     # Buttons call appropriate callback functions
     B = Button(mainWindow, text="start monitor", command=monitor_thread_cb)
