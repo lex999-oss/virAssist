@@ -15,5 +15,5 @@
 #   Please use multiples of 10 for ther time limits(ex. 10x3 = 30 seconds)      #
 #################################################################################
 distance_limit: 50      # centimeters
-idle_time_limit: 5    # seconds
-active_time_limit: 10 # seconds 
+idle_time_limit: 600    # seconds
+active_time_limit: 3600 # seconds
