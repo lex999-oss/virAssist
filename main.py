@@ -99,7 +99,8 @@ def init_icon():
     item2 = MenuItem("Exit", lambda: exit_action(icon))
     item3 = MenuItem("Stop Camera", stop_cam_button)
     item4 = MenuItem("Stop Monitor", stop_monitor_button)
-    menu = Menu(item, item1, item3, item4, item2)
+    item5 = MenuItem("GUI", tk_main_window)
+    menu = Menu(item5, item, item1, item3, item4, item2)
 
     icon.menu = menu
 
@@ -118,9 +119,6 @@ def sys_tray_icon():
 
 
 def measure_distance():
-    """
-    Function that measures the distance between user and web camera
-    """
     # initialise CV2 library and Video stream
     face_cascade = CascadeClassifier('./haarcascade_frontalface_default.xml')
     cap = VideoCapture(0)
