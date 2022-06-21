@@ -9,7 +9,8 @@ from pystray import Icon, MenuItem, Menu
 from os import startfile
 from ctypes import Structure, windll, c_uint, sizeof, byref
 from yaml import load, FullLoader
-
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
 
 class LASTINPUTINFO(Structure):
     _fields_ = [
@@ -223,22 +224,22 @@ def tk_main_window():
     global distance_limit, stop_monitor
     mainWindow = Tk()
     mainWindow.title('virAssist')
-    mainWindow.geometry('260x180')
+    mainWindow.geometry('300x300')
     mainWindow.iconbitmap(".\\favicon.ico")
-    mainWindowTitle = Label(mainWindow, text="virAssist GUI Menu")
+    mainWindowTitle = Label(mainWindow, text="virAssist GUI Menu", font=('Verdana'))
     mainWindowTitle.pack()
     # Buttons call appropriate callback functions
-    B = Button(mainWindow, text="start monitor", command=monitor_thread_cb)
-    C = Button(mainWindow, text="start camera", command=start_cam_button)
-    D = Button(mainWindow, text="stop camera", command=stop_cam_button)
-    F = Button(mainWindow, text="stop monitor", command=stop_monitor_button)
-    E = Button(mainWindow, text="edit config", command=edit_conf_file)
-    edit_config_notice = Label(relief="sunken", text="Note: Restart app after editing config file.")
-    B.pack()
-    C.pack()
-    D.pack()
-    F.pack()
-    E.pack()
+    B = ttk.Button(mainWindow, text="start monitor", command=monitor_thread_cb, bootstyle=(INFO, OUTLINE))
+    C = ttk.Button(mainWindow, text="start camera", command=start_cam_button, bootstyle=(INFO, OUTLINE))
+    D = ttk.Button(mainWindow, text="stop camera", command=stop_cam_button, bootstyle=(INFO, OUTLINE))
+    F = ttk.Button(mainWindow, text="stop monitor", command=stop_monitor_button, bootstyle=(INFO, OUTLINE))
+    E = ttk.Button(mainWindow, text="edit config", command=edit_conf_file, bootstyle=(INFO, OUTLINE))
+    edit_config_notice = Label(relief="sunken", text="Note: Restart app after editing config file.", font=('Verdana 9'))
+    B.pack(pady= 5)
+    C.pack(pady= 5)
+    D.pack(pady= 5)
+    F.pack(pady= 5)
+    E.pack(pady= 5)
     edit_config_notice.pack()
     # run window loop
     mainWindow.mainloop()

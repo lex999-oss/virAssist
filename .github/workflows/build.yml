@@ -54,6 +54,7 @@ jobs:
         pip install opencv-python==4.5.1.48
         pip install pystray==0.17.2
         pip install notify-py==0.3.3
+        pip install ttkbootstrap==1.8.0
     - name: Build with pyinstaller for ${{matrix.TARGET}}
       run: ${{matrix.CMD_BUILD}}
     - name: Load Release URL File from release job
