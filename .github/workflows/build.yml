@@ -37,7 +37,7 @@ jobs:
         include:
           - os: windows-latest
             TARGET: windows
-            CMD_BUILD: pyinstaller --onefile main.py
+            CMD_BUILD: pyinstaller --onefile --noconsole main.py
             OUT_FILE_NAME: main.exe
             ASSET_MIME: application/vnd.microsoft.portable-executable
     steps:
